@@ -1,0 +1,3 @@
+<resources>
+    <string name="a11y_description">Lets AirControl send swipe and tap actions when you show a hand gesture. It only acts while you have pressed Start. It does not read your screen.</string>
+</resources>
