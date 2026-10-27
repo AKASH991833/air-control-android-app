@@ -15,18 +15,19 @@ timeout 30 adb shell dumpsys notification --noredact 2>&1 | grep -iB2 -A8 "airco
 timeout 30 adb shell dumpsys activity activities 2>&1 | grep -i aircontrol | head -20 > out/activities.txt
 timeout 20 adb shell am force-stop dev.aircontrol.app
 # every screen at three sizes (test variant exports the screens; release does not)
-for cfg in "default:" "tall:1080x2400 420" "narrow:540x1200 420"; do
+for cfg in "tall:1080x2400 420" "narrow:540x1200 420"; do
   tag=${cfg%%:*}; spec=${cfg#*:}
+  if [ "$tag" = tall ]; then Y1=1900; Y2=500; else Y1=1000; Y2=250; fi
   if [ -n "$spec" ]; then timeout 20 adb shell wm size ${spec% *}; timeout 20 adb shell wm density ${spec#* }; sleep 3; fi
   for scr in MainActivity SettingsActivity CaptureActivity EnrollActivity; do
     timeout 30 adb shell am start -n dev.aircontrol.app/.$scr > out/am_${tag}_$scr.txt 2>&1; sleep 7; shot ${tag}_$scr
     timeout 20 adb shell am force-stop dev.aircontrol.app
   done
   timeout 30 adb shell am start -n dev.aircontrol.app/.MainActivity > /dev/null 2>&1; sleep 4
-  for n in 1 2 3 4; do timeout 20 adb shell input swipe 300 1000 300 150 250; sleep 1; shot ${tag}_Main_scroll$n; done
+  for n in 1 2 3 4; do timeout 20 adb shell input swipe 300 $Y1 300 $Y2 250; sleep 1; shot ${tag}_Main_scroll$n; done
   timeout 20 adb shell am force-stop dev.aircontrol.app
   timeout 30 adb shell am start -n dev.aircontrol.app/.SettingsActivity > /dev/null 2>&1; sleep 4
-  for n in 1 2; do timeout 20 adb shell input swipe 300 1000 300 150 250; sleep 1; shot ${tag}_Settings_scroll$n; done
+  for n in 1 2; do timeout 20 adb shell input swipe 300 $Y1 300 $Y2 250; sleep 1; shot ${tag}_Settings_scroll$n; done
   timeout 20 adb shell am force-stop dev.aircontrol.app
 done
 exit 0

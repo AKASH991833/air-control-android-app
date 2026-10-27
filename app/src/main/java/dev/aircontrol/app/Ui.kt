@@ -25,7 +25,7 @@ object Ui {
         background = GradientDrawable().apply { setColor(ACCENT); cornerRadius = dp(c, 24).toFloat() }
         setOnClickListener { f() }
         layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(c, 8) }
-        minHeight = dp(c, 48); minimumHeight = dp(c, 48)
+        minHeight = dp(c, 48); minimumHeight = dp(c, 48); setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8))
     }
     fun header(c: Context, s: String) = text(c, s, 13f, ACCENT).apply { setPadding(dp(c, 4), dp(c, 18), 0, dp(c, 2)); letterSpacing = 0.08f }
     /** Square action tile with an icon on a round accent badge, title and one-line hint. */

@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
             mapBox = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
             addView(mapBox)
         })
-        root.addView(text("Not tested on a real phone yet. Gesture accuracy, battery, background calls and camera sharing with other apps depend on your device.", 12f, Ui.MUTED).apply { setPadding(0, dp(14), 0, 0) })
+        root.addView(text("Not tested on a real phone yet: gesture accuracy, battery, background calls and camera sharing with other apps are unverified. AirControl cannot see your screen, so it cannot tell what a tap or pinch will press (for example a pay or send button). Use the pointer and favourite call with care.", 12f, Ui.MUTED).apply { setPadding(0, dp(14), 0, 0) })
         renderMap()
         DebugHooks.install(this) { toggle() }
     }
@@ -102,17 +102,18 @@ class MainActivity : AppCompatActivity() {
         mapBox.removeAllViews()
         val acts = Act.values().filter { it.mode == mode }
         for (id in store.allGestureIds()) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, 0) }
-            row.addView(text(Builtin.pretty(id), 14f))
-            val sp = Spinner(this)
-            sp.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, acts.map { it.label })
-            sp.setSelection(acts.indexOf(store.action(mode, id)).coerceAtLeast(0))
-            var first = true
-            sp.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, i: Long) { if (first) { first = false; return }; store.setAction(mode, id, acts[pos]) }
-                override fun onNothingSelected(p: AdapterView<*>?) {}
-            }
-            row.addView(sp); mapBox.addView(row)
+            val cur = TextView(this).apply { textSize = 14f; setTextColor(Ui.ACCENT) }
+            fun show() { cur.text = store.action(mode, id).label + "   >" }
+            show()
+            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(10), dp(12), dp(10))
+                background = GradientDrawable().apply { setColor(0xFF0F172A.toInt()); cornerRadius = dp(12).toFloat() }
+                layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) }
+                setOnClickListener {
+                    androidx.appcompat.app.AlertDialog.Builder(this@MainActivity).setTitle(Builtin.pretty(id))
+                        .setItems(acts.map { it.label }.toTypedArray()) { _, pos -> store.setAction(mode, id, acts[pos]); show() }.show()
+                } }
+            row.addView(text(Builtin.pretty(id), 15f)); row.addView(cur)
+            mapBox.addView(row)
         }
     }
 

@@ -17,7 +17,7 @@ enum class Act(val label: String, val mode: Mode) {
     NOTIFICATIONS("Open notifications", Mode.REELS),
     SCREENSHOT("Screenshot", Mode.REELS),
     POINTER_TOGGLE("Pointer on / off (finger moves cursor, pinch = tap)", Mode.REELS),
-    CALL_FAVORITE("Call my favourite contact (asks for confirm gesture)", Mode.REELS),
+    CALL_FAVORITE("Call my favourite number directly after the hold, no extra confirmation", Mode.REELS),
     C_NONE("Do nothing", Mode.CAMERA),
     PHOTO("Take photo", Mode.CAMERA),
     VIDEO_TOGGLE("Start / stop video", Mode.CAMERA),
@@ -32,6 +32,7 @@ object Builtin {
     fun pretty(id: String) = when (id) {
         SWIPE_UP -> "Index finger swipe UP (motion)"
         SWIPE_DOWN -> "Index finger swipe DOWN (motion)"
+        "ILoveYou" -> "I-love-you hand"
         else -> if (id.startsWith("custom:")) "My gesture: " + id.removePrefix("custom:") else id.replace('_', ' ')
     }
 }
