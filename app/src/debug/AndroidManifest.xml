@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug/test builds only: lets the CI emulator script open screens directly. Not in a normal build. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity android:name="dev.aircontrol.app.CaptureActivity" android:exported="true" tools:replace="android:exported" />
+        <activity android:name="dev.aircontrol.app.EnrollActivity" android:exported="true" tools:replace="android:exported" />
+    </application>
+</manifest>

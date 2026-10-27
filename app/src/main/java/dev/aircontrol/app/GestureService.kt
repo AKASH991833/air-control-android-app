@@ -50,7 +50,7 @@ class GestureService : LifecycleService() {
 
     private fun startCamera() {
         val store = Store(this)
-        analyzer = try { HandAnalyzer(this) } catch (e: Throwable) { note("Gesture model failed to load: ${e.javaClass.simpleName}"); stopSelf(); return }
+        analyzer = try { HandAnalyzer(this) } catch (e: Throwable) { Log.e("AirControl", "model load failed", e); note("Gesture model failed to load: ${e.javaClass.simpleName}"); stopSelf(); return }
         Log.i("AirControl", "model loaded, camera starting")
         lateinit var engine: GestureEngine
         engine = GestureEngine(store, { id ->
