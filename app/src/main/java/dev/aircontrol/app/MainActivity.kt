@@ -138,13 +138,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggle() {
-        if (GestureService.running) { startService(Intent(this, GestureService::class.java).setAction(GestureService.ACTION_STOP)); GestureService.running = false }
+        if (GestureService.running) { startService(Intent(this, GestureService::class.java).setAction(GestureService.ACTION_STOP)) }
         else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) { ActivityCompat.requestPermissions(this, perms(), 1); return }
             ContextCompat.startForegroundService(this, Intent(this, GestureService::class.java))
-            GestureService.running = true
         }
         refresh()
+        window.decorView.postDelayed({ refresh() }, 1500)
     }
 
     override fun onResume() { super.onResume(); refresh() }
