@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(text("Not tested on a real phone yet. Gesture accuracy, battery and camera sharing with other apps depend on your device.", 12f, 0xFF94A3B8.toInt()).apply { setPadding(0, dp(12), 0, 0) })
         renderMap()
         val dbg = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (dbg && intent.getBooleanExtra("debug_start", false)) window.decorView.postDelayed({ if (!GestureService.running) toggle() }, 800)
+        if (dbg && intent.getBooleanExtra("debug_start", false)) window.decorView.postDelayed({ android.util.Log.i("AirControl", "debug_start hook"); if (!GestureService.running) toggle() }, 800)
     }
 
     private fun sb(f: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
@@ -138,6 +138,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggle() {
+        android.util.Log.i("AirControl", "toggle running=${GestureService.running}")
         if (GestureService.running) { startService(Intent(this, GestureService::class.java).setAction(GestureService.ACTION_STOP)) }
         else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) { ActivityCompat.requestPermissions(this, perms(), 1); return }

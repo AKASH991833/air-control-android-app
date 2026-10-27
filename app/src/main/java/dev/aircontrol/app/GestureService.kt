@@ -26,9 +26,10 @@ class GestureService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        Log.i("AirControl", "service onStartCommand action=${intent?.action}")
         if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
-        startForegroundNow()
-        startCamera()
+        try { startForegroundNow() } catch (e: Throwable) { Log.e("AirControl", "startForeground failed", e); stopSelf(); return START_NOT_STICKY }
+        try { startCamera() } catch (e: Throwable) { Log.e("AirControl", "startCamera failed", e) }
         running = true
         return START_NOT_STICKY
     }
