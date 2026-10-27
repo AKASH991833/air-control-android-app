@@ -20,6 +20,7 @@ class HandIconView(ctx: Context) : View(ctx) {
     enum class Demo { OPEN_PALM, FIST, VICTORY, THUMB_UP, THUMB_DOWN, POINT_UP, LOVE, SWIPE_UP, SWIPE_DOWN, POINTER, ARM, CUSTOM }
 
     var demo = Demo.OPEN_PALM
+    private var frozen = false
     private var t = 0f
     private val anim = ValueAnimator.ofFloat(0f, 1f).apply {
         duration = 2800; repeatCount = ValueAnimator.INFINITE; interpolator = LinearInterpolator()
@@ -29,11 +30,11 @@ class HandIconView(ctx: Context) : View(ctx) {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; color = ACCENT; isFakeBoldText = true }
 
-    override fun onAttachedToWindow() { super.onAttachedToWindow(); anim.start() }
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); if (!frozen) anim.start() }
     override fun onDetachedFromWindow() { anim.cancel(); super.onDetachedFromWindow() }
 
     /** Progress t in [0,1] used by tests to render a given frame. */
-    fun setFrame(v: Float) { anim.cancel(); t = v; invalidate() }
+    fun setFrame(v: Float) { frozen = true; anim.cancel(); t = v; invalidate() }
 
     private fun ease(x: Float) = x * x * (3 - 2 * x)
     private fun seg(a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
@@ -62,7 +63,7 @@ class HandIconView(ctx: Context) : View(ctx) {
         val hold = ease(seg(0.05f, 0.65f)); val done = t > 0.65f && t < 0.95f
         holdRing(c, if (t > 0.65f) 1f else hold, done)
         c.save()
-        if (demo == Demo.THUMB_DOWN) c.rotate(180f, 50f, 50f)
+        if (demo == Demo.THUMB_DOWN) c.rotate(180f, 50f, 58f)
         c.scale(0.9f, 0.9f, 50f, 50f)
         hand(c, demo, dy = 0f)
         c.restore()
@@ -73,7 +74,7 @@ class HandIconView(ctx: Context) : View(ctx) {
         val m = ease(seg(0.15f, 0.5f)); val fade = 1f - seg(0.7f, 0.95f)
         val from = if (up) 16f else -16f; val to = -from
         val dy = lerp(from, to, m)
-        c.save(); c.scale(0.7f, 0.7f, 50f, 50f)
+        c.save(); c.scale(0.8f, 0.8f, 50f, 50f)
         hand(c, Demo.POINT_UP, dy = dy, alpha = if (t > 0.7f) fade else 1f)
         c.restore()
         // direction arrow with start and end markers
@@ -89,7 +90,7 @@ class HandIconView(ctx: Context) : View(ctx) {
     }
 
     private fun pointer(c: Canvas) {
-        c.save(); c.scale(0.7f, 0.7f, 50f, 50f)
+        c.save(); c.scale(0.85f, 0.85f, 50f, 50f); c.translate(0f, -6f)
         val a = seg(0f, 0.25f); val b = seg(0.25f, 0.6f); val pin = seg(0.6f, 0.78f)
         when {
             t < 0.28f -> hand(c, Demo.VICTORY, dy = 0f)
@@ -144,10 +145,18 @@ class HandIconView(ctx: Context) : View(ctx) {
                 for (i in 0..3) ln(c, bx[i], 58f, tx[i] + (i - 1.5f) * 3f, 58f - ln_[i], fw, on)
                 ln(c, 36f, 80f, 14f, 60f, fw, on)
             }
-            k == Demo.FIST -> { for (i in 0..3) curl(i); thumbAcross() }
+            k == Demo.FIST -> {
+                fill.color = palm; c.drawRoundRect(RectF(30f, 40f, 78f, 92f), 14f, 14f, fill)
+                for (i in 0..3) bump(c, bx[i] + 3f, 44f, 6f, off)
+                for (xx in floatArrayOf(47f, 56f, 65f)) ln(c, xx, 46f, xx, 62f, 2.5f, edge)
+                ln(c, 36f, 72f, 70f, 68f, 11f, on)
+            }
             k == Demo.THUMB_UP || k == Demo.THUMB_DOWN -> {
-                for (i in 0..3) bump(c, bx[i] + 6f, 58f, 4.5f, off)
-                ln(c, 40f, 74f, 40f, 26f, 11f, on)   // thumb straight up along the left side
+                // side-view fist: finger rolls as horizontal bands, short thick thumb standing up from the top
+                fill.color = palm; c.drawRoundRect(RectF(30f, 46f, 78f, 94f), 14f, 14f, fill)
+                for (yy in floatArrayOf(58f, 69f, 80f)) ln(c, 46f, yy, 74f, yy, 3f, edge)
+                ln(c, 38f, 50f, 38f, 24f, 15f, on)
+                ln(c, 38f, 34f, 38f, 30f, 3f, edge)
             }
             k == Demo.VICTORY -> {
                 ln(c, 44f, 58f, 34f, 22f, fw, on); ln(c, 56f, 58f, 66f, 22f, fw, on)  // index + middle in a V
