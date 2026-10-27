@@ -22,6 +22,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : AppCompatActivity() {
     private lateinit var store: Store
@@ -52,59 +54,42 @@ class MainActivity : AppCompatActivity() {
         val sv = ScrollView(this).apply { addView(root); setBackgroundColor(0xFF0A0F1E.toInt()) }
         setContentView(sv)
 
+        ViewCompat.setOnApplyWindowInsetsListener(sv) { v, ins -> val sb = ins.getInsets(WindowInsetsCompat.Type.systemBars()); v.setPadding(0, sb.top, 0, sb.bottom); ins }
         root.addView(text("AirControl", 30f))
-        root.addView(text("Control your phone with hand gestures", 14f, 0xFF94A3B8.toInt()))
-        chip = text("Camera: OFF", 14f, 0xFFFCA5A5.toInt()).apply { setPadding(0, dp(8), 0, 0) }
-        root.addView(chip)
+        root.addView(text("Control your phone with hand gestures", 14f, Ui.MUTED))
+        chip = text("Camera: OFF", 14f, 0xFFFCA5A5.toInt())
         start = btn("Start") { toggle() }
-        root.addView(start)
         a11y = text("", 13f, 0xFFFDE68A.toInt())
         root.addView(card().apply {
-            addView(text("Permissions", 16f))
+            addView(chip.apply { textSize = 16f })
+            addView(text("Start runs a visible background camera service with a Stop button in the notification.", 12f, Ui.MUTED))
+            addView(start)
+        })
+        root.addView(Ui.header(this, "QUICK ACTIONS"))
+        root.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL
+            addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_camera, "Camera mode", "Photo and video by gesture") { startActivity(Intent(this@MainActivity, CaptureActivity::class.java)) })
+            addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_add, "Add my gesture", "Teach a custom pose") { startActivity(Intent(this@MainActivity, EnrollActivity::class.java)) }) })
+        root.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL
+            addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_call, "Favourite call", "One saved number") { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) })
+            addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_preferences, "Settings", "Activation pose, timing") { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }) })
+        root.addView(Ui.header(this, "PERMISSIONS"))
+        root.addView(card().apply {
             addView(a11y)
             addView(btn("Allow camera") { ActivityCompat.requestPermissions(this@MainActivity, perms(), 1) })
             addView(btn("Turn on AirControl in Accessibility") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) })
-            addView(text("The accessibility service sends swipes/taps only. It does not read your screen.", 12f, 0xFF94A3B8.toInt()))
+            addView(text("The accessibility service sends swipes and taps only. It does not read your screen.", 12f, Ui.MUTED))
         })
-
+        root.addView(Ui.header(this, "GESTURE ACTIONS"))
         root.addView(card().apply {
-            addView(text("Gesture actions", 16f))
-            val sw = Switch(this@MainActivity).apply { text = "Camera mode (photo / video) instead of Reels mode"; setTextColor(Color.WHITE)
+            val sw = Switch(this@MainActivity).apply { text = "Camera mode actions instead of Reels mode"; setTextColor(Color.WHITE)
                 setOnCheckedChangeListener { _, on -> mode = if (on) Mode.CAMERA else Mode.REELS; renderMap() } }
             addView(sw)
             mapBox = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
             addView(mapBox)
         })
-        root.addView(card().apply {
-            addView(text("Favourite call (one number)", 16f))
-            val nm = android.widget.EditText(this@MainActivity).apply { hint = "Name"; setText(store.favName); setTextColor(Color.WHITE); setHintTextColor(0x88FFFFFF.toInt()) }
-            val no = android.widget.EditText(this@MainActivity).apply { hint = "Phone number"; setText(store.favNumber); inputType = android.text.InputType.TYPE_CLASS_PHONE; setTextColor(Color.WHITE); setHintTextColor(0x88FFFFFF.toInt()) }
-            addView(nm); addView(no)
-            addView(btn("Save number") { if (store.isEmergency(no.text.toString())) { android.widget.Toast.makeText(this@MainActivity, "Emergency numbers are not allowed here.", android.widget.Toast.LENGTH_LONG).show(); return@btn }; store.favName = nm.text.toString().trim(); store.favNumber = no.text.toString().trim(); refresh() })
-            addView(text("Set the gesture for 'Call my favourite contact' in Gesture actions (default: fist held). It places the call directly after the hold time. No contacts are read. A held gesture dials this number directly, with no extra confirmation, so pick a gesture you will not make by accident. Emergency numbers are blocked.", 12f, 0xFF94A3B8.toInt()))
-        })
-        root.addView(btn("Open Camera mode (photo / video)") { startActivity(Intent(this, CaptureActivity::class.java)) })
-        root.addView(btn("Add my gesture") { startActivity(Intent(this, EnrollActivity::class.java)) })
-
-        root.addView(card().apply {
-            addView(text("Safety", 16f))
-            addView(Switch(this@MainActivity).apply { text = "Activation pose required first"; setTextColor(Color.WHITE); isChecked = store.armRequired
-                setOnCheckedChangeListener { _, on -> store.armRequired = on } })
-            addView(text("Show the activation pose (default: I-love-you hand) for the hold time, then gestures work for 10 seconds.", 12f, 0xFF94A3B8.toInt()))
-            addView(text("Hold time (ms)"))
-            addView(SeekBar(this@MainActivity).apply { max = 20; progress = (store.holdMs - 300) / 100
-                setOnSeekBarChangeListener(sb { store.holdMs = 300 + it * 100 }) })
-            addView(text("Cooldown (ms)"))
-            addView(SeekBar(this@MainActivity).apply { max = 20; progress = (store.cooldownMs - 500) / 100
-                setOnSeekBarChangeListener(sb { store.cooldownMs = 500 + it * 100 }) })
-            addView(text("Custom gesture match strictness (lower = stricter)"))
-            addView(SeekBar(this@MainActivity).apply { max = 40; progress = (store.matchThreshold * 100).toInt() - 10
-                setOnSeekBarChangeListener(sb { store.matchThreshold = (it + 10) / 100f }) })
-        })
-        root.addView(text("Not tested on a real phone yet. Gesture accuracy, battery and camera sharing with other apps depend on your device.", 12f, 0xFF94A3B8.toInt()).apply { setPadding(0, dp(12), 0, 0) })
+        root.addView(text("Not tested on a real phone yet. Gesture accuracy, battery, background calls and camera sharing with other apps depend on your device.", 12f, Ui.MUTED).apply { setPadding(0, dp(14), 0, 0) })
         renderMap()
-        val dbg = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (dbg && intent.getBooleanExtra("debug_start", false)) window.decorView.postDelayed({ android.util.Log.i("AirControl", "debug_start hook"); if (!GestureService.running) toggle() }, 800)
+        DebugHooks.install(this) { toggle() }
     }
 
     private fun sb(f: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {

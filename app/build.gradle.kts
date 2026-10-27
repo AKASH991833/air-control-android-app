@@ -12,7 +12,11 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
-    buildTypes { release { isMinifyEnabled = false } }
+    val ksPath = System.getenv("AC_KEYSTORE")
+    if (ksPath != null) signingConfigs.create("rel") {
+        storeFile = file(ksPath); storePassword = System.getenv("AC_KS_PASS"); keyAlias = "aircontrol"; keyPassword = System.getenv("AC_KS_PASS")
+    }
+    buildTypes { release { isMinifyEnabled = false; isDebuggable = false; if (ksPath != null) signingConfig = signingConfigs.getByName("rel") } }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

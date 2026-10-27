@@ -5,6 +5,12 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.Gravity
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.widget.Button
+import android.widget.LinearLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -48,12 +54,23 @@ class CaptureActivity : AppCompatActivity() {
         val root = FrameLayout(this)
         preview = PreviewView(this)
         root.addView(preview)
+        fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
         status = TextView(this).apply {
-            setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; setBackgroundColor(0xAA0A0F1E.toInt()); setPadding(32, 24, 32, 24)
-            text = "Camera mode. Show your arm pose, then a gesture."
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; setBackgroundColor(0xE60A0F1E.toInt()); setPadding(dp(16), dp(12), dp(16), dp(12))
+            text = "Camera mode. Show the activation pose, then a gesture."
         }
-        root.addView(status, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+        val top = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(0xE60A0F1E.toInt())
+            addView(TextView(this@CaptureActivity).apply { text = "<  Camera mode"; textSize = 18f; setTextColor(0xFF22D3EE.toInt()); setPadding(dp(16), dp(14), dp(16), dp(4)); setOnClickListener { finish() } })
+            addView(status) }
+        root.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+        fun b(t: String, f: () -> Unit) = Button(this).apply { text = t; isAllCaps = false; setTextColor(Color.BLACK); setOnClickListener { f() }
+            background = GradientDrawable().apply { setColor(0xFF22D3EE.toInt()); cornerRadius = dp(22).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(4), 0, dp(4), 0) } }
+        val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(0xE60A0F1E.toInt()); setPadding(dp(12), dp(12), dp(12), dp(12))
+            addView(b("Photo") { photo() }); addView(b("Video") { video() }); addView(b("Flip") { handle(Act.SWITCH_CAMERA) }) }
+        root.addView(bar, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         setContentView(root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, i -> val sb = i.getInsets(WindowInsetsCompat.Type.systemBars()); v.setPadding(0, sb.top, 0, sb.bottom); i }
         engine = GestureEngine(store, { id -> runOnUiThread { handle(store.action(Mode.CAMERA, id)) } }, { s -> runOnUiThread { status.text = s } })
         if (PermissionChecker.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PermissionChecker.PERMISSION_GRANTED) {
             status.text = "Camera permission missing. Grant it from the main screen."; return
@@ -79,17 +96,32 @@ class CaptureActivity : AppCompatActivity() {
             val sel = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             val ic = ImageCapture.Builder().build()
             val vc = VideoCapture.withOutput(Recorder.Builder().setQualitySelector(QualitySelector.from(Quality.HD)).build())
+            fun ok(msg: String?) { if (msg != null) status.text = msg }
             p.unbindAll()
             try {
                 p.bindToLifecycle(this, sel, prev, analysis, ic, vc)
                 imageCapture = ic; videoCapture = vc
+                android.util.Log.i("AirControl", "capture bind: photo+video+analysis")
             } catch (e: Exception) {
+                android.util.Log.w("AirControl", "capture bind 4 failed: ${e.message}")
+                p.unbindAll()
                 try {
-                    p.unbindAll(); p.bindToLifecycle(this, sel, prev, analysis, ic)
+                    p.bindToLifecycle(this, sel, prev, analysis, ic)
                     imageCapture = ic; videoCapture = null
-                    status.text = "This phone can't run photo + video + tracking together. Video gesture disabled."
-                } catch (e2: Exception) { status.text = "Camera could not start: ${e2.message}" }
+                    ok("Video + tracking together is not supported on this phone. Photo + tracking is active.")
+                    android.util.Log.i("AirControl", "capture bind: photo+analysis")
+                } catch (e2: Exception) {
+                    android.util.Log.w("AirControl", "capture bind 3 failed: ${e2.message}")
+                    p.unbindAll()
+                    try {
+                        p.bindToLifecycle(this, sel, prev, analysis)
+                        imageCapture = null; videoCapture = null
+                        ok("Photo and video are unavailable here. Tracking preview only.")
+                        android.util.Log.i("AirControl", "capture bind: preview+analysis only")
+                    } catch (e3: Exception) { ok("Camera could not start: ${e3.message}") }
+                }
             }
+            preview.previewStreamState.observe(this) { st -> android.util.Log.i("AirControl", "preview stream=$st") }
         }, ContextCompat.getMainExecutor(this))
     }
 

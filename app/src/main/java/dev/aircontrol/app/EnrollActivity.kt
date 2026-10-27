@@ -4,6 +4,10 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.text.InputType
 import android.view.Gravity
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -35,14 +39,24 @@ class EnrollActivity : AppCompatActivity() {
         val root = FrameLayout(this)
         val preview = PreviewView(this)
         root.addView(preview)
-        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(0xDD0A0F1E.toInt()); setPadding(32, 24, 32, 24) }
-        info = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; text = "Name your gesture, hold the pose in view, tap Record sample. Do 6+ with small position/angle changes." }
-        name = EditText(this).apply { hint = "Gesture name"; setTextColor(0xFFFFFFFF.toInt()); setHintTextColor(0x88FFFFFF.toInt()); inputType = InputType.TYPE_CLASS_TEXT }
-        val rec = Button(this).apply { text = "Record sample" }
-        val save = Button(this).apply { text = "Save gesture (needs 6 samples)" }
-        panel.addView(info); panel.addView(name); panel.addView(rec); panel.addView(save)
-        root.addView(panel, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+        fun b(t: String, solid: Boolean) = Button(this).apply { text = t; isAllCaps = false
+            setTextColor(if (solid) Color.BLACK else 0xFF22D3EE.toInt())
+            background = GradientDrawable().apply { setColor(if (solid) 0xFF22D3EE.toInt() else 0xFF1E293B.toInt()); cornerRadius = dp(22).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) } }
+        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(0xF20A0F1E.toInt()); setPadding(dp(16), dp(14), dp(16), dp(14)) }
+        val titleRow = TextView(this).apply { text = "<  Add my gesture"; textSize = 18f; setTextColor(0xFF22D3EE.toInt()); setPadding(0, 0, 0, dp(6)); setOnClickListener { finish() } }
+        info = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; text = "Name your gesture, hold the pose in view, tap Record sample. Do 6+ with small position/angle changes. Only hand-point numbers are stored, no photos." }
+        name = EditText(this).apply { hint = "Gesture name"; setTextColor(0xFFFFFFFF.toInt()); setHintTextColor(0xFF94A3B8.toInt()); inputType = InputType.TYPE_CLASS_TEXT
+            background = GradientDrawable().apply { setColor(0xFF1E293B.toInt()); cornerRadius = dp(12).toFloat() }; setPadding(dp(14), dp(10), dp(14), dp(10))
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) } }
+        val rec = b("Record sample", true)
+        val save = b("Save gesture (needs 6 samples)", false)
+        panel.addView(titleRow); panel.addView(info); panel.addView(name); panel.addView(rec); panel.addView(save)
+        val scroll = android.widget.ScrollView(this).apply { addView(panel) }
+        root.addView(scroll, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         setContentView(root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, i -> val sb = i.getInsets(WindowInsetsCompat.Type.systemBars()); v.setPadding(0, sb.top, 0, sb.bottom); i }
         rec.setOnClickListener {
             val r = last
             if (r == null) info.text = "No hand seen. Show your hand to the front camera."
