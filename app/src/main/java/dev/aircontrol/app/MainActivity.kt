@@ -30,6 +30,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chip: TextView
     private lateinit var start: Button
     private lateinit var a11y: TextView
+    private lateinit var live: TextView
+    private val poll = android.os.Handler(android.os.Looper.getMainLooper())
+    private val tick = object : Runnable { override fun run() { renderLive(); poll.postDelayed(this, 400) } }
     private lateinit var mapBox: LinearLayout
     private var mode = Mode.REELS
 
@@ -61,10 +64,13 @@ class MainActivity : AppCompatActivity() {
         chip = text("Camera: OFF", 14f, 0xFFFCA5A5.toInt())
         start = btn("Start") { toggle() }
         a11y = text("", 13f, 0xFFFDE68A.toInt())
+        live = text("", 14f, Ui.MUTED)
         root.addView(card().apply {
             addView(chip.apply { textSize = 16f })
             addView(text("Start runs a visible background camera service with a Stop button in the notification.", 12f, Ui.MUTED))
             addView(start)
+            addView(text("LIVE PRACTICE", 11f, Ui.ACCENT).apply { setPadding(0, dp(12), 0, dp(2)) })
+            addView(live)
         })
         root.addView(Ui.header(this, "QUICK ACTIONS"))
         root.addView(LinearLayout(this).apply { orientation = if (Ui.narrow(this@MainActivity)) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
@@ -154,7 +160,26 @@ class MainActivity : AppCompatActivity() {
         window.decorView.postDelayed({ refresh() }, 1500)
     }
 
-    override fun onResume() { super.onResume(); refresh() }
+    override fun onResume() { super.onResume(); refresh(); poll.post(tick) }
+    override fun onPause() { poll.removeCallbacks(tick); super.onPause() }
+
+    /** What the tracking service sees right now. Practice uses the same camera as Start, so there is no second camera session. */
+    private fun renderLive() {
+        if (!GestureService.running) { live.text = "Tap Start, then show a hand to the front camera. This box shows what AirControl sees (the pose it recognises and whether it is armed)."; return }
+        val now = android.os.SystemClock.uptimeMillis()
+        val sb = StringBuilder()
+        if (Live.lastFrameAt == 0L || now - Live.lastFrameAt > 2500) sb.append(if (Live.idle) "Camera is checking slowly to save battery. Show a hand." else "Waiting for camera frames...")
+        else if (!Live.hand) sb.append("No hand seen. Hold your hand in front of the front camera, in good light.")
+        else sb.append("I see: ").append(if (Live.pose == "None") "a hand (no known pose yet)" else Builtin.pretty(Live.pose))
+        if (store.armRequired) {
+            val left = Live.armLeftMs
+            sb.append("\n").append(if (left > 0) "Armed: ${(left + 999) / 1000} s left" else "Not armed. Show ${Builtin.pretty(store.armPose)} for ${"%.1f".format(store.holdMs / 1000.0)} s to arm.")
+        }
+        if (Live.lastAction.isNotEmpty()) sb.append("\nLast action: ").append(Live.lastAction).append(" (").append((now - Live.lastActionAt) / 1000).append(" s ago)")
+        if (Live.hot) sb.append("\nPhone is warm: slowed down to cool it.")
+        if (Live.msg.isNotEmpty()) sb.append("\n").append(Live.msg)
+        live.text = sb.toString()
+    }
 
     private fun refresh() {
         val on = GestureService.running

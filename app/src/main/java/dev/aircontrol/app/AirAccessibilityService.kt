@@ -10,7 +10,15 @@ class AirAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() { instance = this }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
-    override fun onUnbind(intent: android.content.Intent?): Boolean { instance = null; return super.onUnbind(intent) }
+    override fun onUnbind(intent: android.content.Intent?): Boolean { showPointer(false); instance = null; return super.onUnbind(intent) }
+
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val movePending = java.util.concurrent.atomic.AtomicBoolean(false)
+    /** Window and view calls must run on the main thread; the gesture callbacks arrive on the camera analysis thread. */
+    private fun onMain(f: () -> Unit) {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) guarded(f) else main.post { guarded(f) }
+    }
+    private fun guarded(f: () -> Unit) { try { f() } catch (e: Exception) { android.util.Log.w("AirControl", "overlay op failed: ${e.javaClass.simpleName}"); Live.msg = "Pointer overlay problem: ${e.javaClass.simpleName}" } }
 
     private fun swipe(x1: Float, y1: Float, x2: Float, y2: Float, ms: Long) {
         val p = Path(); p.moveTo(x1, y1); p.lineTo(x2, y2)
@@ -19,9 +27,9 @@ class AirAccessibilityService : AccessibilityService() {
 
     private var dot: android.view.View? = null
     private var lp: android.view.WindowManager.LayoutParams? = null
-    var px = 0f; var py = 0f
+    @Volatile var px = 0f; @Volatile var py = 0f
 
-    fun showPointer(show: Boolean) {
+    fun showPointer(show: Boolean) = onMain {
         val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
         if (show && dot == null) {
             val v = android.view.View(this)
@@ -32,15 +40,20 @@ class AirAccessibilityService : AccessibilityService() {
                 android.graphics.PixelFormat.TRANSLUCENT)
             l.gravity = android.view.Gravity.TOP or android.view.Gravity.START
             wm.addView(v, l); dot = v; lp = l
-        } else if (!show && dot != null) { wm.removeView(dot); dot = null; lp = null }
+        } else if (!show && dot != null) { try { wm.removeView(dot) } finally { dot = null; lp = null } }
     }
 
     fun movePointer(nx: Float, ny: Float) {
         val w = resources.displayMetrics.widthPixels; val h = resources.displayMetrics.heightPixels
         px = (nx.coerceIn(0f, 1f) * w); py = (ny.coerceIn(0f, 1f) * h)
-        val l = lp ?: return; val v = dot ?: return
-        l.x = (px - l.width / 2).toInt(); l.y = (py - l.height / 2).toInt()
-        (getSystemService(WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(v, l)
+        if (movePending.compareAndSet(false, true)) onMain {
+            movePending.set(false)
+            val l = lp; val v = dot
+            if (l != null && v != null) {
+                l.x = (px - l.width / 2).toInt(); l.y = (py - l.height / 2).toInt()
+                (getSystemService(WINDOW_SERVICE) as android.view.WindowManager).updateViewLayout(v, l)
+            }
+        }
     }
 
     fun tapPointer() { swipe(px, py, px, py, 40) }
@@ -56,6 +69,7 @@ class AirAccessibilityService : AccessibilityService() {
             Act.HOME -> performGlobalAction(GLOBAL_ACTION_HOME)
             Act.NOTIFICATIONS -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
             Act.SCREENSHOT -> performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+            Act.LOCK_SCREEN -> if (android.os.Build.VERSION.SDK_INT >= 28) performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
             else -> {}
         }
     }

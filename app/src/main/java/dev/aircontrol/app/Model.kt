@@ -16,6 +16,7 @@ enum class Act(val label: String, val mode: Mode) {
     HOME("Home", Mode.REELS),
     NOTIFICATIONS("Open notifications", Mode.REELS),
     SCREENSHOT("Screenshot", Mode.REELS),
+    LOCK_SCREEN("Lock screen (Android 9+, locks only, never unlocks)", Mode.REELS),
     POINTER_TOGGLE("Pointer on / off (finger moves cursor, pinch = tap)", Mode.REELS),
     CALL_FAVORITE("Call my favourite number directly after the hold, no extra confirmation", Mode.REELS),
     C_NONE("Do nothing", Mode.CAMERA),

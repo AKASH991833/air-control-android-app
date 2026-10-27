@@ -17,6 +17,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import java.util.concurrent.Executors
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import androidx.annotation.RequiresApi
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import android.util.Size
 
 /** Background (cross-app) gesture tracking. Must be started from a visible activity (Android 14+ camera FGS rule). */
 class GestureService : LifecycleService() {
@@ -29,8 +36,10 @@ class GestureService : LifecycleService() {
         Log.i("AirControl", "service onStartCommand action=${intent?.action}")
         if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
         try { startForegroundNow() } catch (e: Throwable) { Log.e("AirControl", "startForeground failed", e); stopSelf(); return START_NOT_STICKY }
-        try { startCamera() } catch (e: Throwable) { Log.e("AirControl", "startCamera failed", e) }
-        running = true
+        Live.reset()
+        try { startCamera() } catch (e: Throwable) { Log.e("AirControl", "startCamera failed", e); Live.msg = "Camera start failed"; note("Camera could not start: ${e.javaClass.simpleName}"); stopSelf(); return START_NOT_STICKY }
+        registerScreenOff()
+        if (Build.VERSION.SDK_INT >= 29) registerThermal()
         return START_NOT_STICKY
     }
 
@@ -53,8 +62,10 @@ class GestureService : LifecycleService() {
         analyzer = try { HandAnalyzer(this) } catch (e: Throwable) { Log.e("AirControl", "model load failed", e); note("Gesture model failed to load: ${e.javaClass.simpleName}"); stopSelf(); return }
         Log.i("AirControl", "model loaded, camera starting")
         lateinit var engine: GestureEngine
-        engine = GestureEngine(store, { id ->
+        engine = GestureEngine(store, onGesture@{ id ->
             val a = store.action(Mode.REELS, id)
+            if (a != Act.NONE) { Live.lastAction = Builtin.pretty(id) + " > " + a.label; Live.lastActionAt = SystemClock.uptimeMillis() }
+            if (a != Act.NONE && a != Act.CALL_FAVORITE && AirAccessibilityService.instance == null) { note("Accessibility is off, so this action was skipped."); return@onGesture }
             when (a) {
                 Act.NONE -> {}
                 Act.POINTER_TOGGLE -> {
@@ -68,22 +79,104 @@ class GestureService : LifecycleService() {
         })
         val fut = ProcessCameraProvider.getInstance(this)
         fut.addListener({
-            val p = fut.get(); provider = p
+            val p = try { fut.get() } catch (e: Throwable) { Log.e("AirControl", "camera provider failed", e); note("Camera provider failed: ${e.javaClass.simpleName}"); stopSelf(); return@addListener }
+            provider = p
             val analysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                .setResolutionSelector(ResolutionSelector.Builder().setResolutionStrategy(
+                    ResolutionStrategy(Size(640, 480), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)).build())
                 .build()
             analysis.setAnalyzer(exec) { img ->
                 try {
-                    val r = analyzer?.analyze(img.toBitmap(), img.imageInfo.rotationDegrees, SystemClock.uptimeMillis())
-                    frames++; if (frames % 60 == 1L) Log.i("AirControl", "frames=$frames hand=${r != null}")
-                    engine.onFrame(r, SystemClock.uptimeMillis())
-                    if (pointerOn && r != null) pointerFrame(r, SystemClock.uptimeMillis(), store)
-                } catch (_: Exception) {} finally { img.close() }
+                    val t = SystemClock.uptimeMillis()
+                    // power saving: with no hand seen for 3 s (or a hot phone) look at about 4-5 frames a second instead of every frame
+                    val idle = t - lastHandAt > 3000
+                    Live.idle = idle
+                    val gap = if (hot) 300L else if (idle) 220L else 0L
+                    if (gap > 0 && t - lastProc < gap) return@setAnalyzer
+                    lastProc = t
+                    val r = analyzer?.analyze(img.toBitmap(), img.imageInfo.rotationDegrees, t)
+                    frames++; Live.frames = frames; Live.lastFrameAt = t
+                    if (frames % 60 == 1L) Log.i("AirControl", "frames=$frames hand=${r != null}")
+                    if (r != null) lastHandAt = t
+                    engine.onFrame(r, t)
+                    Live.armLeftMs = engine.armedLeftMs(t)
+                    if (pointerOn && r != null) pointerFrame(r, t, store)
+                } catch (e: Exception) {
+                    errors++
+                    if (errors % 60L == 1L) Log.w("AirControl", "frame error #$errors", e)
+                    Live.msg = "Frame problem: ${e.javaClass.simpleName}"
+                } finally { img.close() }
             }
-            p.unbindAll()
-            p.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, analysis)
+            analysisUse = analysis
+            bindCamera()
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private val ui = Handler(Looper.getMainLooper())
+    private var analysisUse: ImageAnalysis? = null
+    private var retries = 0
+    private var lastHandAt = SystemClock.uptimeMillis()
+    private var lastProc = 0L
+    private var errors = 0L
+    @Volatile private var hot = false
+    private var screenReceiver: android.content.BroadcastReceiver? = null
+    private var thermalListener: Any? = null
+
+    /** Bind the front camera. A camera error (another app took it, or Android closed it) is shown, then retried a few times, never forever. */
+    private fun bindCamera() {
+        val p = provider ?: return; val a = analysisUse ?: return
+        try {
+            p.unbindAll()
+            val cam = p.bindToLifecycle(this, CameraSelector.DEFAULT_FRONT_CAMERA, a)
+            running = true
+            camLive?.removeObserver(camObs)
+            camLive = cam.cameraInfo.cameraState
+            camLive!!.observe(this, camObs)
+        } catch (e: Throwable) {
+            Log.e("AirControl", "bind failed", e)
+            note("Camera could not start: ${e.javaClass.simpleName}. Open AirControl and tap Start to try again.")
+            stopSelf()
+        }
+    }
+
+    private var camLive: androidx.lifecycle.LiveData<androidx.camera.core.CameraState>? = null
+    private val camObs = androidx.lifecycle.Observer<androidx.camera.core.CameraState> { st ->
+        run {
+                if (st.error != null) {
+                    Live.msg = "Camera problem (code ${st.error?.code})"
+                    if (retries < 3) {
+                        val delay = longArrayOf(1000, 2000, 5000)[retries]; retries++
+                        Log.w("AirControl", "camera error ${st.error?.code}, retry $retries")
+                        ui.postDelayed({ if (running) bindCamera() }, delay)
+                    } else { note("Camera was lost (another app may be using it). Open AirControl and tap Start to try again."); stopSelf() }
+                } else if (st.type == androidx.camera.core.CameraState.Type.OPEN) { retries = 0; if (Live.msg.startsWith("Camera problem")) Live.msg = "" }
+        }
+    }
+
+    /** Screen off: stop the camera. Android does not allow starting a camera service from the background, so the user restarts it from the app. */
+    private fun registerScreenOff() {
+        val r = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) {
+                note("Screen turned off, so the camera stopped. Open AirControl and tap Start to use gestures again.")
+                stopSelf()
+            }
+        }
+        screenReceiver = r
+        val f = android.content.IntentFilter(Intent.ACTION_SCREEN_OFF)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_NOT_EXPORTED) else registerReceiver(r, f)
+    }
+
+    @RequiresApi(29)
+    private fun registerThermal() {
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val l = PowerManager.OnThermalStatusChangedListener { status ->
+            hot = status >= PowerManager.THERMAL_STATUS_MODERATE; Live.hot = hot
+            if (status >= PowerManager.THERMAL_STATUS_SEVERE) { note("Phone is too hot, so the camera stopped. Let it cool, then tap Start."); stopSelf() }
+        }
+        thermalListener = l
+        pm.addThermalStatusListener(ContextCompat.getMainExecutor(this), l)
     }
 
     private var frames = 0L
@@ -137,7 +230,13 @@ class GestureService : LifecycleService() {
     override fun onDestroy() {
         AirAccessibilityService.instance?.showPointer(false)
         running = false
-        provider?.unbindAll(); analyzer?.close(); exec.shutdown()
+        ui.removeCallbacksAndMessages(null)
+        try { screenReceiver?.let { unregisterReceiver(it) } } catch (_: Exception) {}
+        if (Build.VERSION.SDK_INT >= 29) { (thermalListener as? PowerManager.OnThermalStatusChangedListener)?.let { (getSystemService(Context.POWER_SERVICE) as PowerManager).removeThermalStatusListener(it) } }
+        provider?.unbindAll(); exec.shutdown()
+        try { exec.awaitTermination(500, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: Exception) {}
+        analyzer?.close()
+        Live.hand = false; Live.pose = "None"
         super.onDestroy()
     }
 

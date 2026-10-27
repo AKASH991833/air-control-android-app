@@ -18,9 +18,22 @@ class GestureEngine(private val store: Store, private val onGesture: (String) ->
     private var armedUntil = 0L
     @Volatile var suspendSwipes = false
     private val swipeBuf = ArrayDeque<Pair<Long, Float>>()
-    private val custom = store.loadCustom().mapValues { e -> e.value }
+    private var custom = store.loadCustom()
+    private var lastReload = 0L
+    private var misses = 0
+    private val recent = ArrayDeque<String>()
+    private var stable = "None"
 
-    fun reload() {}
+    /** Re-read custom gestures (so one just enrolled is picked up while tracking runs). */
+    fun reload() { custom = store.loadCustom() }
+
+    /** A pose change is accepted only when it fills 3 of the last 5 frames, so a single wrong frame cannot restart the hold. */
+    private fun smooth(raw: String): String {
+        recent.addLast(raw); if (recent.size > 5) recent.removeFirst()
+        val top = recent.groupingBy { it }.eachCount().maxByOrNull { it.value }
+        if (top != null && top.value >= 3) stable = top.key
+        return stable
+    }
     fun armedLeftMs(now: Long): Long = if (!store.armRequired) -1L else maxOf(0L, armedUntil - now)
 
     private fun classify(r: HandResult): String {
@@ -38,8 +51,16 @@ class GestureEngine(private val store: Store, private val onGesture: (String) ->
     }
 
     fun onFrame(r: HandResult?, now: Long) {
-        if (r == null) { curId = null; swipeBuf.clear(); if (releaseSince == 0L) releaseSince = now; if (now - releaseSince >= RELEASE_MS) lastFiredId = null; return }
-        val id = classify(r)
+        if (now - lastReload > 3000) { lastReload = now; reload() }
+        if (r == null) {
+            misses++
+            if (misses <= 2) return // short dropout: keep the hold going
+            recent.clear(); stable = "None"
+            Live.hand = false; Live.pose = "None"
+            curId = null; swipeBuf.clear(); if (releaseSince == 0L) releaseSince = now; if (now - releaseSince >= RELEASE_MS) lastFiredId = null; return }
+        misses = 0
+        val id = smooth(classify(r))
+        Live.hand = true; Live.pose = id; Live.armLeftMs = armedLeftMs(now)
         val armedNow = !store.armRequired || now < armedUntil
 
         // temporal swipe detector
