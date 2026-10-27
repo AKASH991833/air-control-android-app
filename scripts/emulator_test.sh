@@ -23,7 +23,10 @@ for cfg in "default:" "tall:1080x2400 420" "narrow:540x1200 420"; do
     timeout 20 adb shell am force-stop dev.aircontrol.app
   done
   timeout 30 adb shell am start -n dev.aircontrol.app/.MainActivity > /dev/null 2>&1; sleep 4
-  timeout 20 adb shell input swipe 300 900 300 200 300; sleep 1; shot ${tag}_Main_scrolled
+  for n in 1 2 3 4; do timeout 20 adb shell input swipe 300 1000 300 150 250; sleep 1; shot ${tag}_Main_scroll$n; done
+  timeout 20 adb shell am force-stop dev.aircontrol.app
+  timeout 30 adb shell am start -n dev.aircontrol.app/.SettingsActivity > /dev/null 2>&1; sleep 4
+  for n in 1 2; do timeout 20 adb shell input swipe 300 1000 300 150 250; sleep 1; shot ${tag}_Settings_scroll$n; done
   timeout 20 adb shell am force-stop dev.aircontrol.app
 done
 exit 0

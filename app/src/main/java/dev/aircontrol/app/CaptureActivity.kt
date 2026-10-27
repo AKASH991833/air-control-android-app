@@ -43,6 +43,7 @@ class CaptureActivity : AppCompatActivity() {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var front = true
+    private lateinit var videoBtn: Button
     private lateinit var store: Store
     private lateinit var engine: GestureEngine
 
@@ -63,11 +64,11 @@ class CaptureActivity : AppCompatActivity() {
             addView(TextView(this@CaptureActivity).apply { text = "<  Camera mode"; textSize = 18f; setTextColor(0xFF22D3EE.toInt()); setPadding(dp(16), dp(14), dp(16), dp(4)); setOnClickListener { finish() } })
             addView(status) }
         root.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
-        fun b(t: String, f: () -> Unit) = Button(this).apply { text = t; isAllCaps = false; setTextColor(Color.BLACK); setOnClickListener { f() }
+        fun b(t: String, f: () -> Unit) = Button(this).apply { text = t; isAllCaps = false; setTextColor(Color.BLACK); minHeight = dp(48); minimumHeight = dp(48); textSize = 14f; setPadding(dp(4), 0, dp(4), 0); setOnClickListener { f() }
             background = GradientDrawable().apply { setColor(0xFF22D3EE.toInt()); cornerRadius = dp(22).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(4), 0, dp(4), 0) } }
+            layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(4), 0, dp(4), 0) } }
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(0xE60A0F1E.toInt()); setPadding(dp(12), dp(12), dp(12), dp(12))
-            addView(b("Photo") { photo() }); addView(b("Video") { video() }); addView(b("Flip") { handle(Act.SWITCH_CAMERA) }) }
+            addView(b("Photo") { photo() }); videoBtn = b("Video") { video() }; addView(videoBtn); addView(b("Flip") { handle(Act.SWITCH_CAMERA) }) }
         root.addView(bar, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
         setContentView(root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, i -> val sb = i.getInsets(WindowInsetsCompat.Type.systemBars()); v.setPadding(0, sb.top, 0, sb.bottom); i }
@@ -121,9 +122,13 @@ class CaptureActivity : AppCompatActivity() {
                     } catch (e3: Exception) { ok("Camera could not start: ${e3.message}") }
                 }
             }
+            syncVideoBtn()
             preview.previewStreamState.observe(this) { st -> android.util.Log.i("AirControl", "preview stream=$st") }
         }, ContextCompat.getMainExecutor(this))
     }
+
+    private fun syncVideoBtn() { videoBtn.isEnabled = videoCapture != null; videoBtn.alpha = if (videoCapture != null) 1f else 0.35f
+        videoBtn.text = if (videoCapture != null) "Video" else "Video (n/a)" }
 
     private fun handle(a: Act) {
         when (a) {

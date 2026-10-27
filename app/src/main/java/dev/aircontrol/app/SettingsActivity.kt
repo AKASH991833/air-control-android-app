@@ -34,16 +34,16 @@ class SettingsActivity : AppCompatActivity() {
             addView(Switch(this@SettingsActivity).apply { text = "Activation pose required first"; setTextColor(Color.WHITE); isChecked = store.armRequired
                 setOnCheckedChangeListener { _, on -> store.armRequired = on } })
             addView(Ui.text(this@SettingsActivity, "Show the activation pose (default: I-love-you hand) for the hold time, then gestures work for 10 seconds.", 12f, 0xFF94A3B8.toInt()))
-            addView(Ui.text(this@SettingsActivity, "Hold time (ms)"))
-            addView(SeekBar(this@SettingsActivity).apply { max = 20; progress = (store.holdMs - 300) / 100
-                setOnSeekBarChangeListener(sb { store.holdMs = 300 + it * 100 }) })
-            addView(Ui.text(this@SettingsActivity, "Cooldown (ms)"))
-            addView(SeekBar(this@SettingsActivity).apply { max = 20; progress = (store.cooldownMs - 500) / 100
-                setOnSeekBarChangeListener(sb { store.cooldownMs = 500 + it * 100 }) })
-            addView(Ui.text(this@SettingsActivity, "Custom gesture match strictness (lower = stricter)"))
-            addView(SeekBar(this@SettingsActivity).apply { max = 40; progress = (store.matchThreshold * 100).toInt() - 10
-                setOnSeekBarChangeListener(sb { store.matchThreshold = (it + 10) / 100f }) })
+            slider(this, "Hold time", 20, (store.holdMs - 300) / 100, { "${300 + it * 100} ms (time to hold a gesture)" }) { store.holdMs = 300 + it * 100 }
+            slider(this, "Cooldown", 20, (store.cooldownMs - 500) / 100, { "${500 + it * 100} ms (pause between actions)" }) { store.cooldownMs = 500 + it * 100 }
+            slider(this, "Custom gesture strictness", 40, (store.matchThreshold * 100).toInt() - 10, { "${(it + 10) / 100f} (lower = stricter)" }) { store.matchThreshold = (it + 10) / 100f }
         })
+    }
+    private fun slider(box: LinearLayout, label: String, max: Int, init: Int, fmt: (Int) -> String, set: (Int) -> Unit) {
+        val v = Ui.text(this, "$label: ${fmt(init)}", 14f).apply { setPadding(0, dp(12), 0, 0) }
+        box.addView(v)
+        box.addView(SeekBar(this).apply { this.max = max; progress = init
+            setOnSeekBarChangeListener(sb { set(it); v.text = "$label: ${fmt(it)}" }) })
     }
     private fun sb(f: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
         override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) { if (u) f(p) }

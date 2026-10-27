@@ -66,10 +66,10 @@ class MainActivity : AppCompatActivity() {
             addView(start)
         })
         root.addView(Ui.header(this, "QUICK ACTIONS"))
-        root.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL
+        root.addView(LinearLayout(this).apply { orientation = if (Ui.narrow(this@MainActivity)) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
             addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_camera, "Camera mode", "Photo and video by gesture") { startActivity(Intent(this@MainActivity, CaptureActivity::class.java)) })
             addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_add, "Add my gesture", "Teach a custom pose") { startActivity(Intent(this@MainActivity, EnrollActivity::class.java)) }) })
-        root.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL
+        root.addView(LinearLayout(this).apply { orientation = if (Ui.narrow(this@MainActivity)) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
             addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_call, "Favourite call", "One saved number") { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) })
             addView(Ui.tile(this@MainActivity, android.R.drawable.ic_menu_preferences, "Settings", "Activation pose, timing") { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }) })
         root.addView(Ui.header(this, "PERMISSIONS"))

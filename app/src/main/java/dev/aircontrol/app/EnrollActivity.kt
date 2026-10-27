@@ -40,10 +40,10 @@ class EnrollActivity : AppCompatActivity() {
         val preview = PreviewView(this)
         root.addView(preview)
         fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-        fun b(t: String, solid: Boolean) = Button(this).apply { text = t; isAllCaps = false
+        fun b(t: String, solid: Boolean) = Button(this).apply { text = t; isAllCaps = false; minHeight = dp(48); minimumHeight = dp(48)
             setTextColor(if (solid) Color.BLACK else 0xFF22D3EE.toInt())
             background = GradientDrawable().apply { setColor(if (solid) 0xFF22D3EE.toInt() else 0xFF1E293B.toInt()); cornerRadius = dp(22).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) } }
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) } }
         val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(0xF20A0F1E.toInt()); setPadding(dp(16), dp(14), dp(16), dp(14)) }
         val titleRow = TextView(this).apply { text = "<  Add my gesture"; textSize = 18f; setTextColor(0xFF22D3EE.toInt()); setPadding(0, 0, 0, dp(6)); setOnClickListener { finish() } }
         info = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 15f; text = "Name your gesture, hold the pose in view, tap Record sample. Do 6+ with small position/angle changes. Only hand-point numbers are stored, no photos." }
