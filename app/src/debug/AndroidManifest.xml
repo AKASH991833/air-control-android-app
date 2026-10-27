@@ -5,5 +5,6 @@
         <activity android:name="dev.aircontrol.app.CaptureActivity" android:exported="true" tools:replace="android:exported" />
         <activity android:name="dev.aircontrol.app.SettingsActivity" android:exported="true" tools:replace="android:exported" />
         <activity android:name="dev.aircontrol.app.EnrollActivity" android:exported="true" tools:replace="android:exported" />
+        <activity android:name="dev.aircontrol.app.GalleryActivity" android:exported="true" />
     </application>
 </manifest>

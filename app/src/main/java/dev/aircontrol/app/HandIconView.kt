@@ -39,16 +39,6 @@ class HandIconView(ctx: Context) : View(ctx) {
     private fun seg(a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
     private fun lerp(a: Float, b: Float, x: Float) = a + (b - a) * x
 
-    // finger extension: thumb, index, middle, ring, pinky (0 curled .. 1 straight)
-    private fun fingers(d: Demo): FloatArray = when (d) {
-        Demo.OPEN_PALM -> floatArrayOf(1f, 1f, 1f, 1f, 1f)
-        Demo.FIST, Demo.THUMB_UP, Demo.THUMB_DOWN -> floatArrayOf(0f, 0f, 0f, 0f, 0f)
-        Demo.VICTORY -> floatArrayOf(0f, 1f, 1f, 0f, 0f)
-        Demo.POINT_UP, Demo.SWIPE_UP, Demo.SWIPE_DOWN -> floatArrayOf(0f, 1f, 0f, 0f, 0f)
-        Demo.LOVE, Demo.ARM -> floatArrayOf(1f, 1f, 0f, 0f, 1f)
-        else -> floatArrayOf(1f, 1f, 1f, 1f, 1f)
-    }
-
     override fun onDraw(c: Canvas) {
         val s = min(width, height) / 100f
         c.save(); c.translate((width - 100 * s) / 2f, (height - 100 * s) / 2f); c.scale(s, s)
@@ -74,7 +64,7 @@ class HandIconView(ctx: Context) : View(ctx) {
         c.save()
         if (demo == Demo.THUMB_DOWN) c.rotate(180f, 50f, 50f)
         c.scale(0.9f, 0.9f, 50f, 50f)
-        hand(c, fingers(demo), thumbUp = demo == Demo.THUMB_UP || demo == Demo.THUMB_DOWN, dy = 0f)
+        hand(c, demo, dy = 0f)
         c.restore()
         if (demo == Demo.ARM && t > 0.65f && t < 0.95f) { txt.textSize = 11f; c.drawText("ARMED 10s", 50f, 99f, txt) }
     }
@@ -84,7 +74,7 @@ class HandIconView(ctx: Context) : View(ctx) {
         val from = if (up) 16f else -16f; val to = -from
         val dy = lerp(from, to, m)
         c.save(); c.scale(0.7f, 0.7f, 50f, 50f)
-        hand(c, fingers(Demo.POINT_UP), thumbUp = false, dy = dy, alpha = if (t > 0.7f) fade else 1f)
+        hand(c, Demo.POINT_UP, dy = dy, alpha = if (t > 0.7f) fade else 1f)
         c.restore()
         // direction arrow with start and end markers
         val x = 90f; val y0 = if (up) 78f else 22f; val y1 = if (up) 22f else 78f
@@ -102,9 +92,9 @@ class HandIconView(ctx: Context) : View(ctx) {
         c.save(); c.scale(0.7f, 0.7f, 50f, 50f)
         val a = seg(0f, 0.25f); val b = seg(0.25f, 0.6f); val pin = seg(0.6f, 0.78f)
         when {
-            t < 0.28f -> hand(c, fingers(Demo.VICTORY), thumbUp = false, dy = 0f)
-            t < 0.6f -> hand(c, fingers(Demo.POINT_UP), thumbUp = false, dy = 0f, dx = lerp(-10f, 10f, ease(b)))
-            else -> hand(c, fingers(Demo.POINT_UP), thumbUp = false, dy = 0f, dx = 10f, pinch = ease(pin))
+            t < 0.28f -> hand(c, Demo.VICTORY, dy = 0f)
+            t < 0.6f -> hand(c, Demo.POINT_UP, dy = 0f, dx = lerp(-10f, 10f, ease(b)))
+            else -> hand(c, Demo.POINT_UP, dy = 0f, dx = 10f, pinch = ease(pin), pinchMode = true)
         }
         c.restore()
         txt.textSize = 9f
@@ -124,33 +114,56 @@ class HandIconView(ctx: Context) : View(ctx) {
         p.strokeWidth = 6f; c.drawLine(50f, 32f, 50f, 68f, p); c.drawLine(32f, 50f, 68f, 50f, p)
     }
 
-    private fun hand(c: Canvas, ext: FloatArray, thumbUp: Boolean, dy: Float, dx: Float = 0f, alpha: Float = 1f, pinch: Float = 0f) {
+    private fun ln(c: Canvas, x1: Float, y1: Float, x2: Float, y2: Float, w: Float, col: Int) { p.strokeWidth = w; p.color = col; c.drawLine(x1, y1, x2, y2, p) }
+    private fun bump(c: Canvas, x: Float, y: Float, r: Float, col: Int) { fill.color = col; c.drawCircle(x, y, r, fill) }
+
+    /** Each pose drawn explicitly (palm facing the camera). Extended parts bright, folded parts dim bumps. */
+    private fun hand(c: Canvas, k: Demo, dy: Float, dx: Float = 0f, alpha: Float = 1f, pinch: Float = 0f, pinchMode: Boolean = false) {
         c.save(); c.translate(dx, dy)
         val a = (255 * alpha).toInt()
-        val on = Color.argb(a, 241, 245, 249); val off = Color.argb(a, 100, 116, 139); val palm = Color.argb(a, 203, 213, 225)
+        val on = Color.argb(a, 241, 245, 249); val off = Color.argb(a, 120, 136, 160); val palm = Color.argb(a, 203, 213, 225); val edge = Color.argb(a, 71, 85, 105)
         fill.color = palm
-        c.drawRoundRect(RectF(33f, 56f, 71f, 94f), 12f, 12f, fill)
-        val xs = floatArrayOf(39f, 49f, 59f, 68f); val full = floatArrayOf(34f, 38f, 34f, 26f)
-        p.strokeWidth = 9f
-        for (i in 0 until 4) {
-            val e = ext[i + 1]
-            var len = 8f + (full[i] - 8f) * e
-            p.color = if (e > 0.5f) on else off
-            var tipX = xs[i]; var tipY = 58f - len
-            if (i == 0 && pinch > 0f) { tipX = lerp(xs[0], 44f, pinch); tipY = lerp(58f - len, 40f, pinch) }
-            c.drawLine(xs[i], 58f, tipX, tipY, p)
-        }
-        // thumb
-        val tOn = ext[0] > 0.5f || thumbUp
-        p.color = if (tOn) on else off
-        val bx = 36f; val by = 74f
-        val tipX: Float; val tipY: Float
+        c.drawRoundRect(RectF(33f, 56f, 75f, 94f), 13f, 13f, fill)
+        val fw = 9f
+        // finger bases (x at knuckle y=58): index, middle, ring, little
+        val bx = floatArrayOf(41f, 50f, 59f, 68f)
+        fun curl(i: Int) { bump(c, bx[i] + 1f, 57f, 5f, off) }
+        fun thumbAcross() { ln(c, 38f, 76f, 62f, 72f, 9f, on) }
         when {
-            thumbUp -> { tipX = 31f; tipY = 28f }
-            ext[0] > 0.5f -> { tipX = lerp(14f, 44f, pinch); tipY = lerp(60f, 40f, pinch) }
-            else -> { tipX = 50f; tipY = 70f }
+            pinchMode -> {
+                curl(1); curl(2); curl(3)
+                val t = pinch
+                // index bends down to meet the thumb tip
+                val ix = lerp(41f, 38f, t); val iy = lerp(22f, 44f, t)
+                ln(c, 41f, 58f, ix, iy, fw, on)
+                ln(c, 36f, 78f, lerp(18f, 37f, t), lerp(60f, 47f, t), fw, on)
+                if (t > 0.9f) bump(c, 37f, 45f, 4f, ACCENT)
+            }
+            k == Demo.OPEN_PALM -> {
+                val tx = floatArrayOf(36f, 47f, 58f, 69f); val ln_ = floatArrayOf(31f, 38f, 35f, 27f)
+                for (i in 0..3) ln(c, bx[i], 58f, tx[i] + (i - 1.5f) * 3f, 58f - ln_[i], fw, on)
+                ln(c, 36f, 80f, 14f, 60f, fw, on)
+            }
+            k == Demo.FIST -> { for (i in 0..3) curl(i); thumbAcross() }
+            k == Demo.THUMB_UP || k == Demo.THUMB_DOWN -> {
+                for (i in 0..3) bump(c, bx[i] + 6f, 58f, 4.5f, off)
+                ln(c, 40f, 74f, 40f, 26f, 11f, on)   // thumb straight up along the left side
+            }
+            k == Demo.VICTORY -> {
+                ln(c, 44f, 58f, 34f, 22f, fw, on); ln(c, 56f, 58f, 66f, 22f, fw, on)  // index + middle in a V
+                curl(2); curl(3); thumbAcross()
+            }
+            k == Demo.POINT_UP || k == Demo.SWIPE_UP || k == Demo.SWIPE_DOWN || k == Demo.POINTER -> {
+                ln(c, 41f, 58f, 41f, 18f, fw, on); curl(1); curl(2); curl(3); thumbAcross()
+            }
+            k == Demo.LOVE || k == Demo.ARM -> {
+                ln(c, 41f, 58f, 35f, 22f, fw, on)      // index up
+                ln(c, 68f, 58f, 72f, 30f, fw, on)      // little finger up
+                curl(1); curl(2)                       // middle + ring folded
+                ln(c, 36f, 80f, 12f, 62f, fw, on)      // thumb out to the side
+            }
+            else -> {}
         }
-        c.drawLine(bx, by, tipX, tipY, p)
         c.restore()
     }
 

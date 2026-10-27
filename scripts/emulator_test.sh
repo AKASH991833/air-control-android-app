@@ -26,6 +26,12 @@ timeout 30 adb shell "ps -A | grep aircontrol" > out/ps.txt 2>&1
 timeout 30 adb shell dumpsys notification --noredact 2>&1 | grep -iB2 -A8 "aircontrol" | head -40 > out/notification.txt
 timeout 30 adb shell dumpsys activity activities 2>&1 | grep -i aircontrol | head -20 > out/activities.txt
 timeout 20 adb shell am force-stop dev.aircontrol.app
+# gallery: poses (static) and motion frames at full size
+timeout 20 adb shell wm size reset; sleep 2
+timeout 30 adb shell am start -n dev.aircontrol.app/.GalleryActivity > /dev/null 2>&1; sleep 4; shot gallery_poses
+timeout 20 adb shell am force-stop dev.aircontrol.app
+timeout 30 adb shell am start -n dev.aircontrol.app/.GalleryActivity --es set motion > /dev/null 2>&1; sleep 4; shot gallery_motion
+timeout 20 adb shell am force-stop dev.aircontrol.app
 # every screen at two sizes (test variant exports the screens; release does not)
 for cfg in "tall:1080x2400 420" "narrow:540x1200 420"; do
   tag=${cfg%%:*}; spec=${cfg#*:}

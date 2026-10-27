@@ -88,8 +88,8 @@ class MainActivity : AppCompatActivity() {
                 val t = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = if (nar) LinearLayout.LayoutParams(-1, -2) else LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) } }
                 t.addView(text(title, 16f)); t.addView(text(body, 12f, Ui.MUTED)); l.addView(t); addView(l)
             }
-            step(HandIconView.Demo.ARM, "1. Wake it up", "Show the I-love-you hand to the front camera for about 1 second. Gestures then work for 10 seconds.")
-            step(HandIconView.Demo.POINTER, "2. Pointer (peace sign)", "Peace sign turns the pointer on or off. Move your index finger to move it. Touch thumb and index together for a moment to tap.")
+            step(HandIconView.Demo.ARM, "1. Wake it up", "Show the I-love-you hand (thumb, index and little finger out) to the front camera and hold it for ${"%.1f".format(store.holdMs / 1000.0)} seconds. Gestures then work for 10 seconds.")
+            step(HandIconView.Demo.POINTER, "2. Pointer (peace sign)", "Peace sign turns the pointer on or off. Move your index finger to move it. Touch thumb and index together and hold about 0.3 seconds to tap.")
         })
         root.addView(Ui.header(this, "GESTURES  (tap one to choose its action)"))
         root.addView(card().apply {
