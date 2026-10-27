@@ -153,10 +153,9 @@ class HandIconView(ctx: Context) : View(ctx) {
             }
             k == Demo.THUMB_UP || k == Demo.THUMB_DOWN -> {
                 // side-view fist: finger rolls as horizontal bands, short thick thumb standing up from the top
-                fill.color = palm; c.drawRoundRect(RectF(30f, 46f, 78f, 94f), 14f, 14f, fill)
-                for (yy in floatArrayOf(58f, 69f, 80f)) ln(c, 46f, yy, 74f, yy, 3f, edge)
-                ln(c, 38f, 50f, 38f, 24f, 15f, on)
-                ln(c, 38f, 34f, 38f, 30f, 3f, edge)
+                fill.color = palm; c.drawRoundRect(RectF(32f, 52f, 78f, 94f), 13f, 13f, fill)
+                for (yy in floatArrayOf(63f, 73f, 83f)) ln(c, 48f, yy, 74f, yy, 3f, edge)
+                ln(c, 44f, 58f, 41f, 14f, 17f, on)
             }
             k == Demo.VICTORY -> {
                 ln(c, 44f, 58f, 34f, 22f, fw, on); ln(c, 56f, 58f, 66f, 22f, fw, on)  // index + middle in a V

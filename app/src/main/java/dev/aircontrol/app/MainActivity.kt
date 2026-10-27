@@ -44,7 +44,8 @@ class MainActivity : AppCompatActivity() {
         text = s; setTextColor(Color.BLACK); isAllCaps = false
         background = GradientDrawable().apply { setColor(0xFF22D3EE.toInt()); cornerRadius = dp(24).toFloat() }
         setOnClickListener { f() }
-        layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) }
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) }
+        minHeight = dp(48); minimumHeight = dp(48); setPadding(dp(14), dp(8), dp(14), dp(8))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
