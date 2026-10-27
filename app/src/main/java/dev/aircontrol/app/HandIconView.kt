@@ -73,7 +73,7 @@ class HandIconView(ctx: Context) : View(ctx) {
         holdRing(c, if (t > 0.65f) 1f else hold, done)
         c.save()
         if (demo == Demo.THUMB_DOWN) c.rotate(180f, 50f, 50f)
-        c.scale(0.78f, 0.78f, 50f, 50f)
+        c.scale(0.9f, 0.9f, 50f, 50f)
         hand(c, fingers(demo), thumbUp = demo == Demo.THUMB_UP || demo == Demo.THUMB_DOWN, dy = 0f)
         c.restore()
         if (demo == Demo.ARM && t > 0.65f && t < 0.95f) { txt.textSize = 11f; c.drawText("ARMED 10s", 50f, 99f, txt) }
@@ -143,10 +143,10 @@ class HandIconView(ctx: Context) : View(ctx) {
         // thumb
         val tOn = ext[0] > 0.5f || thumbUp
         p.color = if (tOn) on else off
-        val bx = 34f; val by = 78f
+        val bx = 36f; val by = 74f
         val tipX: Float; val tipY: Float
         when {
-            thumbUp -> { tipX = 30f; tipY = 36f }
+            thumbUp -> { tipX = 31f; tipY = 28f }
             ext[0] > 0.5f -> { tipX = lerp(14f, 44f, pinch); tipY = lerp(60f, 40f, pinch) }
             else -> { tipX = 50f; tipY = 70f }
         }
