@@ -113,6 +113,7 @@ class GestureService : LifecycleService() {
     /** Direct call to the one number the user typed in. Needs CALL_PHONE. Blocked paths are reported, not faked. */
     private fun callFavorite(store: Store) {
         val num = store.favNumber
+        if (store.isEmergency(num)) { note("Emergency numbers are not allowed for gesture calling."); return }
         if (num.isBlank()) { note("No favourite number set in AirControl."); return }
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) != android.content.pm.PackageManager.PERMISSION_GRANTED) { note("Call permission not granted."); return }
         val nowT = SystemClock.uptimeMillis()

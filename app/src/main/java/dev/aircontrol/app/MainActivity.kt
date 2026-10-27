@@ -80,8 +80,8 @@ class MainActivity : AppCompatActivity() {
             val nm = android.widget.EditText(this@MainActivity).apply { hint = "Name"; setText(store.favName); setTextColor(Color.WHITE); setHintTextColor(0x88FFFFFF.toInt()) }
             val no = android.widget.EditText(this@MainActivity).apply { hint = "Phone number"; setText(store.favNumber); inputType = android.text.InputType.TYPE_CLASS_PHONE; setTextColor(Color.WHITE); setHintTextColor(0x88FFFFFF.toInt()) }
             addView(nm); addView(no)
-            addView(btn("Save number") { store.favName = nm.text.toString().trim(); store.favNumber = no.text.toString().trim(); refresh() })
-            addView(text("Set the gesture for 'Call my favourite contact' in Gesture actions (default: fist held). It places the call directly after the hold time. No contacts are read.", 12f, 0xFF94A3B8.toInt()))
+            addView(btn("Save number") { if (store.isEmergency(no.text.toString())) { android.widget.Toast.makeText(this@MainActivity, "Emergency numbers are not allowed here.", android.widget.Toast.LENGTH_LONG).show(); return@btn }; store.favName = nm.text.toString().trim(); store.favNumber = no.text.toString().trim(); refresh() })
+            addView(text("Set the gesture for 'Call my favourite contact' in Gesture actions (default: fist held). It places the call directly after the hold time. No contacts are read. A held gesture dials this number directly, with no extra confirmation, so pick a gesture you will not make by accident. Emergency numbers are blocked.", 12f, 0xFF94A3B8.toInt()))
         })
         root.addView(btn("Open Camera mode (photo / video)") { startActivity(Intent(this, CaptureActivity::class.java)) })
         root.addView(btn("Add my gesture") { startActivity(Intent(this, EnrollActivity::class.java)) })

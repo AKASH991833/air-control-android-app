@@ -51,6 +51,12 @@ class Store(ctx: Context) {
     var favNumber: String
         get() = p.getString("favNum", "") ?: ""
         set(v) = p.edit().putString("favNum", v).apply()
+    /** Emergency numbers are never allowed as the favourite (no hands-free emergency dialing from a gesture). */
+    fun isEmergency(n: String): Boolean {
+        val d = n.filter { it.isDigit() }
+        return d in setOf("112", "100", "101", "102", "108", "911", "999", "000", "110", "119", "15", "17", "18", "1098") ||
+            (android.os.Build.VERSION.SDK_INT >= 29 && android.telephony.PhoneNumberUtils.isEmergencyNumber(n))
+    }
     var armRequired: Boolean
         get() = p.getBoolean("arm", true)
         set(v) = p.edit().putBoolean("arm", v).apply()
