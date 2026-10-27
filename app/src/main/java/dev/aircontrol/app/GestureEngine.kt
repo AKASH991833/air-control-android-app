@@ -21,6 +21,7 @@ class GestureEngine(private val store: Store, private val onGesture: (String) ->
     private val custom = store.loadCustom().mapValues { e -> e.value }
 
     fun reload() {}
+    fun armedLeftMs(now: Long): Long = if (!store.armRequired) -1L else maxOf(0L, armedUntil - now)
 
     private fun classify(r: HandResult): String {
         var best: String? = null; var bestD = Float.MAX_VALUE

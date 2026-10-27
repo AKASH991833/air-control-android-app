@@ -2,6 +2,18 @@
 # CI emulator smoke test. No real calls: CALL_PHONE is never exercised.
 mkdir -p out
 shot() { timeout 30 adb exec-out screencap -p > "out/$1.png"; timeout 20 adb shell dumpsys window 2>&1 | grep -E "mCurrentFocus" | head -1 > "out/$1.focus.txt"; }
+# upgrade test: old 0.1.0 -> new, settings must survive (debug-signed both, same key)
+timeout 20 adb uninstall dev.aircontrol.app >/dev/null 2>&1
+timeout 120 adb install apk/old-debug.apk > out/up_install_old.txt 2>&1
+timeout 30 adb shell am start -n dev.aircontrol.app/.MainActivity >/dev/null 2>&1; sleep 4; timeout 20 adb shell am force-stop dev.aircontrol.app
+timeout 20 adb shell "run-as dev.aircontrol.app sh -c 'mkdir -p shared_prefs; echo \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\" ?><map><int name=\\\"hold\\\" value=\\\"1100\\\" /><string name=\\\"favName\\\">Upgrade Test</string></map>\" > shared_prefs/air.xml'" > out/up_write.txt 2>&1
+timeout 20 adb shell "run-as dev.aircontrol.app cat shared_prefs/air.xml" > out/up_before.txt 2>&1
+timeout 120 adb install -r apk/app-debug.apk > out/up_install_new.txt 2>&1
+timeout 20 adb shell "run-as dev.aircontrol.app cat shared_prefs/air.xml" > out/up_after.txt 2>&1
+timeout 20 adb shell dumpsys package dev.aircontrol.app | grep -E "versionName|versionCode" > out/up_version.txt
+timeout 20 adb shell am force-stop dev.aircontrol.app
+timeout 30 adb shell am start -n dev.aircontrol.app/.SettingsActivity >/dev/null 2>&1; sleep 5; shot up_settings_after
+timeout 20 adb shell am force-stop dev.aircontrol.app
 timeout 120 adb install -r apk/app-debug.apk > out/install.txt 2>&1
 for p in CAMERA RECORD_AUDIO POST_NOTIFICATIONS; do timeout 20 adb shell pm grant dev.aircontrol.app android.permission.$p; done
 adb logcat -c
@@ -25,6 +37,10 @@ for cfg in "tall:1080x2400 420" "narrow:540x1200 420"; do
   done
   timeout 30 adb shell am start -n dev.aircontrol.app/.MainActivity > /dev/null 2>&1; sleep 4
   for n in 1 2 3 4; do timeout 20 adb shell input swipe 300 $Y1 300 $Y2 250; sleep 1; shot ${tag}_Main_scroll$n; done
+  timeout 20 adb shell am force-stop dev.aircontrol.app
+  timeout 30 adb shell am start -n dev.aircontrol.app/.MainActivity > /dev/null 2>&1; sleep 4
+  timeout 20 adb shell input swipe 300 $Y1 300 $Y2 250; sleep 1
+  for n in 1 2 3 4 5 6; do shot ${tag}_anim$n; sleep 0.4; done
   timeout 20 adb shell am force-stop dev.aircontrol.app
   timeout 30 adb shell am start -n dev.aircontrol.app/.SettingsActivity > /dev/null 2>&1; sleep 4
   for n in 1 2; do timeout 20 adb shell input swipe 300 $Y1 300 $Y2 250; sleep 1; shot ${tag}_Settings_scroll$n; done

@@ -79,7 +79,18 @@ class MainActivity : AppCompatActivity() {
             addView(btn("Turn on AirControl in Accessibility") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) })
             addView(text("The accessibility service sends swipes and taps only. It does not read your screen.", 12f, Ui.MUTED))
         })
-        root.addView(Ui.header(this, "GESTURE ACTIONS"))
+        root.addView(Ui.header(this, "HOW IT WORKS"))
+        root.addView(card().apply {
+            fun step(d: HandIconView.Demo, title: String, body: String) {
+                val l = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
+                l.addView(HandIconView(this@MainActivity).apply { demo = d; layoutParams = LinearLayout.LayoutParams(dp(84), dp(84)) })
+                val t = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) } }
+                t.addView(text(title, 16f)); t.addView(text(body, 12f, Ui.MUTED)); l.addView(t); addView(l)
+            }
+            step(HandIconView.Demo.ARM, "1. Wake it up", "Show the I-love-you hand to the front camera for about 1 second. Gestures then work for 10 seconds.")
+            step(HandIconView.Demo.POINTER, "2. Pointer (peace sign)", "Peace sign turns the pointer on or off. Move your index finger to move it. Touch thumb and index together for a moment to tap.")
+        })
+        root.addView(Ui.header(this, "GESTURES  (tap one to choose its action)"))
         root.addView(card().apply {
             val sw = Switch(this@MainActivity).apply { text = "Camera mode actions instead of Reels mode"; setTextColor(Color.WHITE)
                 setOnCheckedChangeListener { _, on -> mode = if (on) Mode.CAMERA else Mode.REELS; renderMap() } }
@@ -112,7 +123,12 @@ class MainActivity : AppCompatActivity() {
                     androidx.appcompat.app.AlertDialog.Builder(this@MainActivity).setTitle(Builtin.pretty(id))
                         .setItems(acts.map { it.label }.toTypedArray()) { _, pos -> store.setAction(mode, id, acts[pos]); show() }.show()
                 } }
-            row.addView(text(Builtin.pretty(id), 15f)); row.addView(cur)
+            val g = GestureGuide.info(id)
+            val demo = HandIconView(this).apply { demo = g.demo; layoutParams = LinearLayout.LayoutParams(dp(84), dp(84)) }
+            val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(10) } }
+            info.addView(text(g.title, 16f)); if (g.how.isNotEmpty()) info.addView(text(g.how, 12f, Ui.MUTED)); info.addView(cur)
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+            line.addView(demo); line.addView(info); row.addView(line)
             mapBox.addView(row)
         }
     }

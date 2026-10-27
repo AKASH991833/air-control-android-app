@@ -34,9 +34,12 @@ class SettingsActivity : AppCompatActivity() {
             addView(Switch(this@SettingsActivity).apply { text = "Activation pose required first"; setTextColor(Color.WHITE); isChecked = store.armRequired
                 setOnCheckedChangeListener { _, on -> store.armRequired = on } })
             addView(Ui.text(this@SettingsActivity, "Show the activation pose (default: I-love-you hand) for the hold time, then gestures work for 10 seconds.", 12f, 0xFF94A3B8.toInt()))
-            slider(this, "Hold time", 20, (store.holdMs - 300) / 100, { "${300 + it * 100} ms (time to hold a gesture)" }) { store.holdMs = 300 + it * 100 }
-            slider(this, "Cooldown", 20, (store.cooldownMs - 500) / 100, { "${500 + it * 100} ms (pause between actions)" }) { store.cooldownMs = 500 + it * 100 }
-            slider(this, "Custom gesture strictness", 40, (store.matchThreshold * 100).toInt() - 10, { "${(it + 10) / 100f} (lower = stricter)" }) { store.matchThreshold = (it + 10) / 100f }
+            val adv = LinearLayout(this@SettingsActivity).apply { orientation = LinearLayout.VERTICAL; visibility = android.view.View.GONE }
+            addView(Ui.btn(this@SettingsActivity, "Advanced tuning (optional)") { adv.visibility = if (adv.visibility == android.view.View.GONE) android.view.View.VISIBLE else android.view.View.GONE })
+            addView(adv)
+            slider(adv, "Hold time", 20, (store.holdMs - 300) / 100, { "${300 + it * 100} ms (time to hold a gesture)" }) { store.holdMs = 300 + it * 100 }
+            slider(adv, "Cooldown", 20, (store.cooldownMs - 500) / 100, { "${500 + it * 100} ms (pause between actions)" }) { store.cooldownMs = 500 + it * 100 }
+            slider(adv, "Custom gesture strictness", 40, (store.matchThreshold * 100).toInt() - 10, { "${(it + 10) / 100f} (lower = stricter)" }) { store.matchThreshold = (it + 10) / 100f }
         })
     }
     private fun slider(box: LinearLayout, label: String, max: Int, init: Int, fmt: (Int) -> String, set: (Int) -> Unit) {

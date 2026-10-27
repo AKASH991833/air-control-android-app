@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
@@ -14,8 +15,15 @@ jobs:
       - name: Download gesture model
         run: curl -fsSL -o app/src/main/assets/gesture_recognizer.task https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/gesture_recognizer.task
       - run: gradle assembleDebug --no-daemon
+      - name: Build previous version (0.1.0) for upgrade test, same debug key
+        run: |
+          git worktree add ../old c6e6968
+          cp app/src/main/assets/gesture_recognizer.task ../old/app/src/main/assets/
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/new.apk
+          (cd ../old && gradle assembleDebug --no-daemon && cp app/build/outputs/apk/debug/app-debug.apk /tmp/old.apk)
+          mkdir -p apkout && cp /tmp/new.apk apkout/app-debug.apk && cp /tmp/old.apk apkout/old-debug.apk
       - uses: actions/upload-artifact@v4
-        with: { name: AirControl-debug-apk, path: app/build/outputs/apk/debug/app-debug.apk }
+        with: { name: AirControl-debug-apk, path: apkout }
 
   emulator-test:
     needs: build
